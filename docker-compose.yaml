@@ -7,10 +7,10 @@ services:
     networks:
       - sandbixproxy_mynet
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_SECRET=${POSTGRES_SECRET}
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${SOPAPI_POSTGRES_USER}
+      - POSTGRES_SECRET=${SOPAPI_POSTGRES_SECRET}
+      - POSTGRES_HOST=${SOPAPI_POSTGRES_HOST}
+      - POSTGRES_DB=${SOPAPI_POSTGRES_DB}
 
 networks:
   sandbixproxy_mynet:
