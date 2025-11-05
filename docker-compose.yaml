@@ -1,0 +1,17 @@
+version: "3.1"
+
+services:
+  sopapi:
+    image: sopapi:latest
+    container_name: sopapi
+    networks:
+      - sandbixproxy_mynet
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_SECRET=${POSTGRES_SECRET}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_DB=${POSTGRES_DB}
+
+networks:
+  sandbixproxy_mynet:
+    external: true
