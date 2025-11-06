@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from sqlalchemy import (
     Column,
     Integer,
@@ -16,7 +17,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
-class Playlist(Base):
+class PlaylistModel(Base):
     __tablename__ = "PLAYLISTS"
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(Text)
@@ -25,7 +26,7 @@ class Playlist(Base):
     field2 = Column(Text)
 
 
-class PlaylistItem(Base):
+class PlaylistItemModel(Base):
     __tablename__ = "PLAYLIST_ITEMS"
     id = Column(Integer, primary_key=True, autoincrement=True)
     playlist_id = Column(Integer)
@@ -34,10 +35,11 @@ class PlaylistItem(Base):
     field2 = Column(Text)
 
 
-class GameMode(Base):
+class GameModeModel(Base):
     __tablename__ = "GAME_MODE"
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(Text)
+    description = Column(Text)
     answer1 = Column(Text)
     answer2 = Column(Text)
 
@@ -49,13 +51,17 @@ class PostgresManager:
     def __init__(self):
         self.session = SessionLocal
 
-    def get_playlist(self, _id: int) -> Playlist:
-        with self.session() as session:
-            return session.query(Playlist).filter(Playlist.id == _id).first()
+    @staticmethod
+    def wrap(model: type[BaseModel], results: list[type[Base]]) -> list:
+        return [model.model_validate(result) for result in results]
 
-    def get_playlists(self) -> list[Playlist]:
+    def get_playlist(self, _id: int) -> type[PlaylistModel]:
         with self.session() as session:
-            return session.query(Playlist)
+            return session.query(PlaylistModel).filter(PlaylistModel.id == _id).first()
+
+    def get_playlists(self) -> list[type[PlaylistModel]]:
+        with self.session() as session:
+            return session.query(PlaylistModel).all()
 
     def create_playlist(
         self,
@@ -63,9 +69,9 @@ class PostgresManager:
         description: str,
         field1: str,
         field2: str,
-    ) -> Playlist:
+    ) -> PlaylistModel:
         with self.session() as session:
-            new_playlist = Playlist(
+            new_playlist = PlaylistModel(
                 title=title,
                 description=description,
                 field1=field1,
@@ -81,11 +87,11 @@ class PostgresManager:
                 session.rollback()
                 raise e
 
-    def get_playlist_items(self, playlist_id: int) -> list[PlaylistItem]:
+    def get_playlist_items(self, playlist_id: int) -> list[type[PlaylistItemModel]]:
         with self.session() as session:
-            return session.query(PlaylistItem).filter(
-                PlaylistItem.playlist_id == playlist_id
-            )
+            return session.query(PlaylistItemModel).filter(
+                PlaylistItemModel.playlist_id == playlist_id
+            ).all()
 
     def create_playlist_item(
         self,
@@ -93,9 +99,9 @@ class PostgresManager:
         url: str,
         field1: str,
         field2: str,
-    ) -> PlaylistItem:
+    ) -> PlaylistItemModel:
         with self.session() as session:
-            new_playlist_item = PlaylistItem(
+            new_playlist_item = PlaylistItemModel(
                 playlist_id=playlist_id,
                 url=url,
                 field1=field1,
@@ -111,6 +117,6 @@ class PostgresManager:
                 session.rollback()
                 raise f"Error creating user: {e}"
 
-    def get_game_modes(self) -> list[GameMode]:
+    def get_game_modes(self) -> list[type[GameModeModel]]:
         with self.session() as session:
-            return session.query(GameMode)
+            return session.query(GameModeModel).all()

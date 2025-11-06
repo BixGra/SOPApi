@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class Playlist(BaseModel):
@@ -7,6 +7,7 @@ class Playlist(BaseModel):
     description: str
     field1: str
     field2: str
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PlaylistItem(BaseModel):
@@ -15,6 +16,7 @@ class PlaylistItem(BaseModel):
     url: str
     field1: str
     field2: str
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GameMode(BaseModel):
@@ -23,6 +25,7 @@ class GameMode(BaseModel):
     description: str
     answer1: str
     answer2: str
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GetPlaylistItemsInput(BaseModel):
