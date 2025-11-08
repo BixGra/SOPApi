@@ -28,6 +28,10 @@ class GameMode(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class GetPlaylistInput(BaseModel):
+    id: int
+
+
 class GetPlaylistItemsInput(BaseModel):
     playlist_id: int
 

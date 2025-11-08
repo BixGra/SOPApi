@@ -55,9 +55,9 @@ class PostgresManager:
     def wrap(model: type[BaseModel], results: list[type[Base]]) -> list:
         return [model.model_validate(result) for result in results]
 
-    def get_playlist(self, _id: int) -> type[PlaylistModel]:
+    def get_playlist(self, _id: int) -> list[type[PlaylistModel]]:
         with self.session() as session:
-            return session.query(PlaylistModel).filter(PlaylistModel.id == _id).first()
+            return [session.query(PlaylistModel).filter(PlaylistModel.id == _id).first()]
 
     def get_playlists(self) -> list[type[PlaylistModel]]:
         with self.session() as session:
@@ -116,6 +116,10 @@ class PostgresManager:
             except Exception as e:
                 session.rollback()
                 raise f"Error creating user: {e}"
+
+    def get_game_mode(self, _id: int) -> list[type[GameModeModel]]:
+        with self.session() as session:
+            return [session.query(GameModeModel).filter(GameModeModel.id == _id).first()]
 
     def get_game_modes(self) -> list[type[GameModeModel]]:
         with self.session() as session:
