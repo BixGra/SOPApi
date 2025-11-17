@@ -57,7 +57,9 @@ class PostgresManager:
 
     def get_playlist(self, _id: int) -> list[type[PlaylistModel]]:
         with self.session() as session:
-            return [session.query(PlaylistModel).filter(PlaylistModel.id == _id).first()]
+            return [
+                session.query(PlaylistModel).filter(PlaylistModel.id == _id).first()
+            ]
 
     def get_playlists(self) -> list[type[PlaylistModel]]:
         with self.session() as session:
@@ -89,9 +91,11 @@ class PostgresManager:
 
     def get_playlist_items(self, playlist_id: int) -> list[type[PlaylistItemModel]]:
         with self.session() as session:
-            return session.query(PlaylistItemModel).filter(
-                PlaylistItemModel.playlist_id == playlist_id
-            ).all()
+            return (
+                session.query(PlaylistItemModel)
+                .filter(PlaylistItemModel.playlist_id == playlist_id)
+                .all()
+            )
 
     def create_playlist_item(
         self,
@@ -119,7 +123,9 @@ class PostgresManager:
 
     def get_game_mode(self, _id: int) -> list[type[GameModeModel]]:
         with self.session() as session:
-            return [session.query(GameModeModel).filter(GameModeModel.id == _id).first()]
+            return [
+                session.query(GameModeModel).filter(GameModeModel.id == _id).first()
+            ]
 
     def get_game_modes(self) -> list[type[GameModeModel]]:
         with self.session() as session:
