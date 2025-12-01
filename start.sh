@@ -1,4 +1,4 @@
-read -n1 -p "Detach container? [Y,n]" detach
+read -n1 -p "Detach container? [Y,n] " detach
 echo
 echo "docker build . -t sopapi"
 docker build . -t sopapi
