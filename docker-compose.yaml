@@ -16,6 +16,7 @@ services:
       - BASE_URL=${SOPAPI_BASE_URL}
       - FRONT_BASE_URL=${SOPAPI_FRONT_BASE_URL}
       - ORIGINS=${SOPAPI_ORIGINS}
+      - COOKIE_DOMAIN=${SOPAPI_COOKIE_DOMAIN}
 
 networks:
   sandbixproxy_mynet:
