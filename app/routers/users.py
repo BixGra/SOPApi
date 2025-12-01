@@ -38,7 +38,7 @@ async def login(
     twitch_client: TwitchClient = Depends(get_twitch_client),
 ) -> RedirectResponse:
     response = RedirectResponse(twitch_client.get_authorization_url(state))
-    response.set_cookie(key="state", value=state)
+    response.set_cookie(key="state", value=state, domain=get_settings().cookie_domain)
     return response
 
 
@@ -51,8 +51,6 @@ async def callback(
     twitch_client: TwitchClient = Depends(get_twitch_client),
     postgres_database: Session = Depends(get_postgres_database),
 ) -> RedirectResponse:
-    # TODO
-    # Origin of login for redirect
     if error:
         raise BaseError("callback error")
     if not state:
@@ -76,8 +74,10 @@ async def callback(
             refresh_token=refresh_token,
         )
     response = RedirectResponse(f"{get_settings().front_base_url}/callback")
-    response.set_cookie(key="token", value=token)
-    response.set_cookie(key="user_id", value=user_id)
+    response.set_cookie(key="token", value=token, domain=get_settings().cookie_domain)
+    response.set_cookie(
+        key="user_id", value=user_id, domain=get_settings().cookie_domain
+    )
     return response
 
 

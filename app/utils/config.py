@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     base_url: str
     front_base_url: str
     origins: list[str]
+    cookie_domain: str = ""
     environment: Optional[str] = "production"
     model_config = SettingsConfigDict(extra="ignore")
 
