@@ -1,11 +1,11 @@
 from typing import Any
 
 from pydantic import BaseModel
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 
 
 class BaseCRUD:
-    def __init__(self, session: sessionmaker):
+    def __init__(self, session: Session):
         self.session = session
 
     @staticmethod

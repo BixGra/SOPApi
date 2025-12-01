@@ -5,7 +5,6 @@ from fastapi.params import Depends
 from sqlalchemy.orm import Session
 
 from app.crud.playlists import PlaylistsCRUD
-from app.dependencies import get_postgres_database
 from app.schemas.playlists import (
     GameMode,
     GetGameModeInput,
@@ -14,6 +13,7 @@ from app.schemas.playlists import (
     Playlist,
     PlaylistItem,
 )
+from app.utils.dependencies import get_postgres_database
 
 router = APIRouter(tags=["Playlists"], prefix="/playlists")
 

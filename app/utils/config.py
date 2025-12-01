@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from typing import Optional
 
@@ -9,6 +10,11 @@ class Settings(BaseSettings):
     postgres_secret: str
     postgres_host: str
     postgres_db: str
+    twitch_id: str
+    twitch_secret: str
+    base_url: str
+    front_base_url: str
+    origins: list[str]
     environment: Optional[str] = "production"
     model_config = SettingsConfigDict(extra="ignore")
 
