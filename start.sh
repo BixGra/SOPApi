@@ -5,10 +5,10 @@ docker build . -t sopapi
 
 case $detach in
   n|N)
-    echo "docker compose up --remove-orphans";;
+    echo "docker compose up --remove-orphans"
     docker compose up --remove-orphans;;
   *)
-    echo "docker compose up -d --remove-orphans";;
+    echo "docker compose up -d --remove-orphans"
     docker compose up -d --remove-orphans;;
 esac
 
