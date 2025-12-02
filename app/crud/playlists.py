@@ -1,9 +1,8 @@
-from fastapi import HTTPException
-
 from app.crud.base import BaseCRUD
 from app.models.playlists import GameModeBase, PlaylistBase, PlaylistItemBase
 from app.schemas.playlists import GameMode, Playlist, PlaylistItem
 from app.utils.errors import (
+    BaseError,
     GameModeNotFoundError,
     PlaylistItemsNotFoundError,
     PlaylistNotFoundError,
@@ -15,7 +14,7 @@ class PlaylistsCRUD(BaseCRUD):
         if (
             result := self.session.query(PlaylistBase)
             .filter(PlaylistBase.id == _id)
-            .first()
+            .one_or_none()
         ):
             return self.wrap_element(
                 Playlist,
@@ -47,7 +46,7 @@ class PlaylistsCRUD(BaseCRUD):
             return self.wrap_element(Playlist, new_playlist)
         except Exception as e:
             self.session.rollback()
-            raise HTTPException(400)
+            raise BaseError("create playlist rollback")
 
     def get_playlist_items(self, playlist_id: int) -> list[PlaylistItem]:
         if (
@@ -82,13 +81,13 @@ class PlaylistsCRUD(BaseCRUD):
             return self.wrap_elements(PlaylistItem, new_playlist_item)
         except Exception as e:
             self.session.rollback()
-            raise HTTPException(400)
+            raise BaseError("create playlist item rollback")
 
     def get_game_mode(self, _id: int) -> list[GameMode]:
         if (
             result := self.session.query(GameModeBase)
             .filter(GameModeBase.id == _id)
-            .first()
+            .one_or_none()
         ):
             return self.wrap_element(
                 GameMode,

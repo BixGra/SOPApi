@@ -3,9 +3,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import StaticPool, create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.dependencies import get_postgres_database
 from app.main import app
 from app.models.playlists import GameModeBase, PlaylistBase, PlaylistItemBase
+from app.utils.dependencies import get_postgres_database
 
 postgres_url = f"postgresql://postgres:postgres@127.0.0.1:5432/sopapi"
 engine = create_engine(postgres_url, poolclass=StaticPool)
