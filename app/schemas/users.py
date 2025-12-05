@@ -9,6 +9,7 @@ class User(BaseModel):
     username: str
     token: str
     refresh_token: str
+    session_id: str
     # expires_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -19,4 +20,4 @@ class IsLoggedIn(BaseModel):
 
 
 class GetUserInput(BaseModel):
-    user_id: str
+    session_id: str
