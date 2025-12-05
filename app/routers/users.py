@@ -8,8 +8,18 @@ from sqlalchemy.orm import Session
 from app.crud.users import UsersCRUD
 from app.schemas.users import GetUserInput, IsLoggedIn, User
 from app.utils.config import get_settings
-from app.utils.dependencies import get_postgres_database, get_state, get_twitch_client
-from app.utils.errors import BaseError, PotentialCSRFError, UserNotFoundError
+from app.utils.dependencies import (
+    get_postgres_database,
+    get_session_id,
+    get_state,
+    get_twitch_client,
+)
+from app.utils.errors import (
+    BaseError,
+    NoSessionError,
+    PotentialCSRFError,
+    UserNotFoundError,
+)
 from app.utils.twitch import TwitchClient
 
 router = APIRouter(tags=["Users"], prefix="/users")
@@ -21,12 +31,14 @@ async def is_logged_in(
     twitch_client: TwitchClient = Depends(get_twitch_client),
     postgres_database: Session = Depends(get_postgres_database),
 ) -> IsLoggedIn:
-    user_id = request.cookies.get("user_id")
-    if not user_id:
+    session_id = request.cookies.get("session_id")
+    if not session_id:
         return {"is_logged_in": False}
     try:
-        user = UsersCRUD(postgres_database).get_user(user_id)
-        is_logged_in = await twitch_client.is_token_valid(user[0].token, user_id)
+        user = UsersCRUD(postgres_database).get_user(session_id)
+        is_logged_in = await twitch_client.is_token_valid(
+            user[0].token, user[0].user_id
+        )
         return {"is_logged_in": is_logged_in}
     except UserNotFoundError:
         return {"is_logged_in": False}
@@ -48,6 +60,7 @@ async def callback(
     error: str = None,
     code: str = None,
     state: str = "",
+    session_id: str = Depends(get_session_id),
     twitch_client: TwitchClient = Depends(get_twitch_client),
     postgres_database: Session = Depends(get_postgres_database),
 ) -> RedirectResponse:
@@ -60,29 +73,43 @@ async def callback(
     user_id, token, refresh_token = await twitch_client.callback(code)
     username, email = await twitch_client.get_user(token, user_id)
     if UsersCRUD(postgres_database).exists_user(user_id):
-        user = UsersCRUD(postgres_database).update_user(
+        UsersCRUD(postgres_database).update_user(
             user_id=user_id,
             token=token,
             refresh_token=refresh_token,
+            session_id=session_id,
         )
     else:
-        user = UsersCRUD(postgres_database).create_user(
+        UsersCRUD(postgres_database).create_user(
             user_id=user_id,
             email=email,
             username=username,
             token=token,
             refresh_token=refresh_token,
+            session_id=session_id,
         )
     response = RedirectResponse(f"{get_settings().front_base_url}/callback")
-    response.set_cookie(key="token", value=token, domain=get_settings().cookie_domain)
     response.set_cookie(
-        key="user_id", value=user_id, domain=get_settings().cookie_domain
+        key="session_id", value=session_id, domain=get_settings().cookie_domain
     )
     return response
 
 
 @router.get("/logout")
-async def logout():
+async def logout(
+    request: Request,
+    postgres_database: Session = Depends(get_postgres_database),
+):
+    session_id = request.cookies.get("session_id")
+    if not session_id:
+        raise NoSessionError
+    user = UsersCRUD(postgres_database).get_user(session_id)
+    UsersCRUD(postgres_database).update_user(
+        user_id=user[0].user_id,
+        token="",
+        refresh_token="",
+        session_id="",
+    )
     return
 
 
@@ -91,4 +118,4 @@ async def get_user(
     get_user_input: Annotated[GetUserInput, Query()],
     postgres_database: Session = Depends(get_postgres_database),
 ) -> User:
-    return UsersCRUD(postgres_database).get_user(get_user_input.user_id)[0]
+    return UsersCRUD(postgres_database).get_user(get_user_input.session_id)[0]

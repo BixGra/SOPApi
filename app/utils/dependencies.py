@@ -19,5 +19,9 @@ def get_state() -> str:
     return secrets.token_urlsafe(32)
 
 
+def get_session_id() -> str:
+    return secrets.token_urlsafe(32)
+
+
 def get_twitch_client() -> Generator[TwitchClient]:
     yield TwitchClient()

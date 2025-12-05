@@ -7,10 +7,10 @@ from app.utils.errors import BaseError, UserNotFoundError
 
 
 class UsersCRUD(BaseCRUD):
-    def get_user(self, user_id: int) -> list[User]:
+    def get_user(self, session_id: str) -> list[User]:
         if (
             result := self.session.query(UserBase)
-            .filter(UserBase.user_id == user_id)
+            .filter(UserBase.session_id == session_id)
             .one_or_none()
         ):
             return self.wrap_element(
@@ -33,6 +33,7 @@ class UsersCRUD(BaseCRUD):
         username: str,
         token: str,
         refresh_token: str,
+        session_id: str,
     ) -> list[User]:
         new_user = UserBase(
             user_id=user_id,
@@ -40,6 +41,7 @@ class UsersCRUD(BaseCRUD):
             username=username,
             token=token,
             refresh_token=refresh_token,
+            session_id=session_id,
         )
         self.session.add(new_user)
 
@@ -56,11 +58,13 @@ class UsersCRUD(BaseCRUD):
         user_id: str,
         token: str,
         refresh_token: str,
+        session_id: str,
     ) -> None:
         self.session.query(UserBase).filter(UserBase.user_id == user_id).update(
             {
                 UserBase.token: token,
                 UserBase.refresh_token: refresh_token,
+                UserBase.session_id: session_id,
             },
             synchronize_session="fetch",
         )

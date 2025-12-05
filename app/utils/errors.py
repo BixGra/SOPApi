@@ -17,11 +17,17 @@ class SOPApiError(Exception):
         }
 
 
+# Base
+
+
 class BaseError(SOPApiError):
     def __init__(self, text: str = ""):
         self.error_code = "E00"
         self.status_code = 500
         self.title = text
+
+
+# Postgres
 
 
 class PlaylistNotFoundError(SOPApiError):
@@ -52,6 +58,9 @@ class UserNotFoundError(SOPApiError):
         self.title = "User not found"
 
 
+# Twitch
+
+
 class TwitchStatesError(SOPApiError):
     def __init__(self):
         self.error_code = "T01"
@@ -71,3 +80,13 @@ class PotentialCSRFError(SOPApiError):
         self.error_code = "T03"
         self.status_code = 403
         self.title = "Potential Cross-Site Request Forgery"
+
+
+# Front End
+
+
+class NoSessionError(SOPApiError):
+    def __init__(self):
+        self.error_code = "F01"
+        self.status_code = 401
+        self.title = "No session running"

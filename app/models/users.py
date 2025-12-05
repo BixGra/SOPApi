@@ -10,4 +10,5 @@ class UserBase(Base):
     username = Column(Text)
     token = Column(Text)
     refresh_token = Column(Text)
+    session_id = Column(Text)
     # expires_at = Column(Time)
