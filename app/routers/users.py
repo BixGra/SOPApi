@@ -18,6 +18,8 @@ from app.utils.errors import (
     BaseError,
     NoSessionError,
     PotentialCSRFError,
+    TwitchCallbackError,
+    TwitchStatesError,
     UserNotFoundError,
 )
 from app.utils.twitch import TwitchClient
@@ -65,9 +67,9 @@ async def callback(
     postgres_database: Session = Depends(get_postgres_database),
 ) -> RedirectResponse:
     if error:
-        raise BaseError("callback error")
+        raise TwitchCallbackError
     if not state:
-        raise BaseError("state missing error")
+        raise TwitchStatesError
     if not request.cookies.get("state") == state:
         raise PotentialCSRFError
     user_id, token, refresh_token = await twitch_client.callback(code)

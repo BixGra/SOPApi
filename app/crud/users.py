@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from app.crud.base import BaseCRUD
 from app.models.users import UserBase
 from app.schemas.users import User
