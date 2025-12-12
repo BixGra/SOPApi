@@ -61,6 +61,7 @@ def setup_users(users) -> Generator[FixtureUsers]:
     users_to_clean = postgres_database.query(UserBase).all()
     for user in users_to_clean:
         postgres_database.delete(user)
+    postgres_database.commit()
 
     # Setup
     postgres_database.add_all(users)
