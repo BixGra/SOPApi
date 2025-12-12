@@ -15,7 +15,6 @@ from app.utils.dependencies import (
     get_twitch_client,
 )
 from app.utils.errors import (
-    BaseError,
     NoSessionError,
     PotentialCSRFError,
     TwitchCallbackError,
