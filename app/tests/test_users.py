@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.users import UserBase
+from app.schemas.users import User
 from app.tests.fixtures.fixtures_artifact import (
     TestingSessionLocal,
     fake_session_id,
@@ -14,13 +15,19 @@ from app.tests.fixtures.fixtures_artifact import (
     override_get_state,
     override_get_twitch_client,
 )
-from app.tests.fixtures.fixtures_classes import FixtureUser, FixtureUsers
+from app.tests.fixtures.fixtures_classes import FixtureUsers
 from app.utils.config import get_settings
 from app.utils.dependencies import (
     get_postgres_database,
     get_session_id,
     get_state,
     get_twitch_client,
+)
+from app.utils.errors import (
+    NoSessionError,
+    PotentialCSRFError,
+    TwitchCallbackError,
+    TwitchStatesError,
 )
 
 app.dependency_overrides[get_postgres_database] = override_get_postgres_manager
@@ -68,7 +75,7 @@ def setup_users(users) -> Generator[FixtureUsers]:
     postgres_database.commit()
 
     fixture_users = [
-        FixtureUser(
+        User(
             user_id=user.user_id,
             email=user.email,
             username=user.username,
@@ -116,6 +123,7 @@ def test_is_logged_in_expired_token_returns_false(setup_users, setup_cookies):
     response = client.get("/users/is-logged-in")
     assert response.status_code == 200
     assert response.json() == {"is_logged_in": False}
+    # dqtq response.json
 
 
 # /users/login
@@ -133,33 +141,33 @@ def test_login_ok(setup_cookies):
 # /users/callback
 
 
-def test_callback_error_returns_400():
+def test_callback_error_returns_TwitchCallbackError():
     response = client.get("/users/callback?error=error")
     assert response.status_code == 400
     data = response.json()
-    assert data["error_code"] == "T02"
+    assert data["error_code"] == TwitchCallbackError().error_code
 
 
-def test_callback_missing_state_returns_400():
+def test_callback_missing_state_returns_TwitchStatesError():
     response = client.get("/users/callback")
     assert response.status_code == 400
     data = response.json()
-    assert data["error_code"] == "T01"
+    assert data["error_code"] == TwitchStatesError().error_code
 
 
-def test_callback_no_cookies_returns_403(setup_cookies):
+def test_callback_no_cookies_returns_PotentialCSRFError(setup_cookies):
     response = client.get(f"/users/callback?state={fake_state}")
     assert response.status_code == 403
     data = response.json()
-    assert data["error_code"] == "T03"
+    assert data["error_code"] == PotentialCSRFError().error_code
 
 
-def test_callback_wrong_state_returns_403(setup_cookies):
+def test_callback_wrong_state_returns_PotentialCSRFError(setup_cookies):
     client.cookies.set("state", "wrong_state")
     response = client.get(f"/users/callback?state={fake_state}")
     assert response.status_code == 403
     data = response.json()
-    assert data["error_code"] == "T03"
+    assert data["error_code"] == PotentialCSRFError().error_code
 
 
 def test_callback_ok(
@@ -187,11 +195,11 @@ def test_callback_multiple_ok(
 # /users/logout
 
 
-def test_logout_no_cookies_returns_401(setup_cookies):
+def test_logout_no_cookies_returns_NoSessionError(setup_cookies):
     response = client.get("/users/logout")
     assert response.status_code == 401
     data = response.json()
-    assert data["error_code"] == "F01"
+    assert data["error_code"] == NoSessionError().error_code
 
 
 def test_logout_ok(setup_users, setup_cookies):

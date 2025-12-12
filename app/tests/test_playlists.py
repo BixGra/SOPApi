@@ -6,20 +6,23 @@ from sqlalchemy import text
 
 from app.main import app
 from app.models.playlists import GameModeBase, PlaylistBase, PlaylistItemBase
+from app.schemas.playlists import GameMode, Playlist, PlaylistItem
 from app.tests.fixtures.fixtures_artifact import (
     TestingSessionLocal,
     override_get_postgres_manager,
 )
 from app.tests.fixtures.fixtures_classes import (
-    FixtureGameMode,
     FixtureGameModes,
-    FixturePlaylist,
-    FixturePlaylistItem,
     FixturePlaylistItems,
     FixturePlaylists,
     FixturePlaylistsItems,
 )
 from app.utils.dependencies import get_postgres_database
+from app.utils.errors import (
+    GameModeNotFoundError,
+    PlaylistItemsNotFoundError,
+    PlaylistNotFoundError,
+)
 
 app.dependency_overrides[get_postgres_database] = override_get_postgres_manager
 
@@ -61,8 +64,8 @@ def setup_playlists(playlists) -> Generator[FixturePlaylists]:
         postgres_database.refresh(playlist)
 
     fixture_playlists = [
-        FixturePlaylist(
-            id_=playlist.id,
+        Playlist(
+            id=playlist.id,
             title=playlist.title,
             description=playlist.description,
             field1=playlist.field1,
@@ -134,8 +137,8 @@ def setup_playlists_items(playlists_items) -> Generator[FixturePlaylistsItems]:
 
     fixture_playlists_items = [
         [
-            FixturePlaylistItem(
-                id_=playlist_item.id,
+            PlaylistItem(
+                id=playlist_item.id,
                 playlist_id=playlist_item.playlist_id,
                 url=playlist_item.url,
                 field1=playlist_item.field1,
@@ -198,8 +201,8 @@ def setup_game_modes(game_modes) -> Generator[FixtureGameModes]:
         postgres_database.refresh(game_mode)
 
     fixture_game_modes = [
-        FixtureGameMode(
-            id_=game_mode.id,
+        GameMode(
+            id=game_mode.id,
             name=game_mode.name,
             description=game_mode.description,
             answer1=game_mode.answer1,
@@ -247,11 +250,11 @@ def test_get_playlist_missing_query_parameters_returns_422(setup_playlists):
     assert response.status_code == 422
 
 
-def test_get_playlist_not_found_returns_404(setup_playlists):
+def test_get_playlist_not_found_returns_PlaylistNotFoundError(setup_playlists):
     response = client.get("/playlists/get-playlist?id=9999")
     assert response.status_code == 404
     data = response.json()
-    assert data["error_code"] == "P01"
+    assert data["error_code"] == PlaylistNotFoundError().error_code
 
 
 # /playlists/get-playlist-items
@@ -272,11 +275,13 @@ def test_get_playlist_items_missing_query_parameters_returns_422(setup_playlists
     assert response.status_code == 422
 
 
-def test_get_playlist_items_not_found_returns_404(setup_playlists_items):
+def test_get_playlist_items_not_found_returns_PlaylistItemsNotFoundError(
+    setup_playlists_items,
+):
     response = client.get("/playlists/get-playlist-items?playlist_id=9999")
     assert response.status_code == 404
     data = response.json()
-    assert data["error_code"] == "P02"
+    assert data["error_code"] == PlaylistItemsNotFoundError().error_code
 
 
 # /playlists/get-game-modes
@@ -308,8 +313,8 @@ def test_get_game_mode_missing_query_parameters_returns_422(setup_game_modes):
     assert response.status_code == 422
 
 
-def test_get_game_mode_not_foundreturns_404(setup_game_modes):
+def test_get_game_mode_not_found_returns_GameModeNotFoundError(setup_game_modes):
     response = client.get("/playlists/get-game-mode?id=9999")
     assert response.status_code == 404
     data = response.json()
-    assert data["error_code"] == "P03"
+    assert data["error_code"] == GameModeNotFoundError().error_code

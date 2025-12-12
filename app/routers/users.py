@@ -6,7 +6,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.crud.users import UsersCRUD
-from app.schemas.users import GetUserInput, IsLoggedIn, User
+from app.schemas.users import CallbackInput, GetUserInput, IsLoggedIn, User
 from app.utils.config import get_settings
 from app.utils.dependencies import (
     get_postgres_database,
@@ -58,20 +58,18 @@ async def login(
 @router.get("/callback")
 async def callback(
     request: Request,
-    error: str = None,
-    code: str = None,
-    state: str = "",
+    callback_input: Annotated[CallbackInput, Query()],
     session_id: str = Depends(get_session_id),
     twitch_client: TwitchClient = Depends(get_twitch_client),
     postgres_database: Session = Depends(get_postgres_database),
 ) -> RedirectResponse:
-    if error:
+    if callback_input.error:
         raise TwitchCallbackError
-    if not state:
+    if not callback_input.state:
         raise TwitchStatesError
-    if not request.cookies.get("state") == state:
+    if not request.cookies.get("state") == callback_input.state:
         raise PotentialCSRFError
-    user_id, token, refresh_token = await twitch_client.callback(code)
+    user_id, token, refresh_token = await twitch_client.callback(callback_input.code)
     username, email = await twitch_client.get_user(token, user_id)
     if UsersCRUD(postgres_database).exists_user(user_id):
         UsersCRUD(postgres_database).update_user(

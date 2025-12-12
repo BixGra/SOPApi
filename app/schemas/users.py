@@ -21,3 +21,9 @@ class IsLoggedIn(BaseModel):
 
 class GetUserInput(BaseModel):
     session_id: str
+
+
+class CallbackInput(BaseModel):
+    error: str = None
+    code: str = None
+    state: str = ""
