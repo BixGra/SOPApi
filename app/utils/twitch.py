@@ -45,7 +45,7 @@ class TwitchClient:
             )
         )
 
-    async def callback(self, code: str):
+    async def callback(self, code: str) -> tuple[str, str, str]:
         response = await self.client.post(
             token_url,
             headers={
@@ -89,7 +89,7 @@ class TwitchClient:
         )
         return response.status_code == 200
 
-    async def get_user(self, token: str, user_id: str):
+    async def get_user(self, token: str, user_id: str) -> tuple[str, str]:
         response = await self.client.get(
             get_users,
             headers={

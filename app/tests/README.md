@@ -31,4 +31,14 @@ CREATE TABLE public."PLAYLIST_ITEMS" (
     field2 text,
     PRIMARY KEY (id)
 );
+
+CREATE TABLE public."USERS" (
+    email text,
+    username text,
+    token text,
+    refresh_token text,
+    user_id text NOT NULL,
+    session_id text,
+    PRIMARY KEY (user_id)
+);
 ```
