@@ -28,3 +28,5 @@ While running, head to `/docs` route for API Documentation.
 Requires a Postgres database set up as in `app/tests/README.md`
 
 Requires an enviromnent with both `requirements.txt` and `requirements.dev.txt` installed.
+
+Run command `pytest` at root
