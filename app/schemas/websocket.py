@@ -1,7 +1,8 @@
 from enum import Enum
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from fastapi import WebSocket
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.utils.errors import (
     IncorrectWebsocketInputError,
@@ -10,6 +11,15 @@ from app.utils.errors import (
     MissingTypeFieldError,
     UnknownTypeFieldError,
 )
+
+# MARK: -MANAGER
+
+
+class ActiveConnection(BaseModel):
+    websocket: WebSocket
+    last_seen: float
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
 
 # MARK: -INPUT - Poll
 

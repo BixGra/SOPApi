@@ -1,6 +1,6 @@
 from typing import Callable
 
-from fastapi import APIRouter, WebSocket
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.params import Depends
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -126,7 +126,6 @@ async def connect_websocket(
                                     user_id=user.user_id,
                                     poll_id=payload.data.data.poll_id,
                                 )
-
                             except PollNotFoundError:
                                 await connection_manager.send_json(
                                     session_id, PollNotFoundError().json()
