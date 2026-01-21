@@ -132,13 +132,13 @@ class Choice(BaseModel):
 # MARK: Poll - Start
 
 
-class PollStartOutput(BaseModel):
+class PollStartOutputData(BaseModel):
     poll_id: str
 
 
 class PollStartOutput(BaseModel):
     type: Literal[PollOutputType.START]
-    data: PollStartOutput
+    data: PollStartOutputData
 
 
 # MARK: Poll - Get
