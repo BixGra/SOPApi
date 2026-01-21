@@ -102,7 +102,7 @@ def setup_cookies():
     client.cookies.clear()
 
 
-# /users/is-logged-in
+# MARK: /users/is-logged-in
 
 
 def test_is_logged_in_no_cookies_returns_false(setup_users, setup_cookies):
@@ -123,22 +123,21 @@ def test_is_logged_in_expired_token_returns_false(setup_users, setup_cookies):
     response = client.get("/users/is-logged-in")
     assert response.status_code == 200
     assert response.json() == {"is_logged_in": False}
-    # dqtq response.json
 
 
-# /users/login
+# MARK: /users/login
 
 
 def test_login_ok(setup_cookies):
     response = client.get("/users/login")
     assert (
         response.url
-        == f"https://id.twitch.tv/oauth2/authorize?client_id={get_settings().twitch_id}&response_type=code&state={fake_state}&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Fusers%2Fcallback&scope=channel%3Amanage%3Apolls+channel%3Amanage%3Apredictions+user%3Aread%3Aemail"
+        == f"https://id.twitch.tv/oauth2/authorize?client_id={get_settings().twitch_id}&response_type=code&state={fake_state}&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Fusers%2Fcallback&scope=channel%3Amanage%3Apolls+user%3Aread%3Aemail"
     )
     assert client.cookies.get("state") == fake_state
 
 
-# /users/callback
+# MARK: /users/callback
 
 
 def test_callback_error_returns_TwitchCallbackError():
@@ -192,7 +191,7 @@ def test_callback_multiple_ok(
     assert client.cookies.get("session_id") == fake_session_id
 
 
-# /users/logout
+# MARK: /users/logout
 
 
 def test_logout_no_cookies_returns_NoSessionError(setup_cookies):

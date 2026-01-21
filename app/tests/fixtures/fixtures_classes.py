@@ -38,7 +38,14 @@ class FixtureGameModes(FixtureBase):
 
 
 class FixtureUsers(FixtureBase):
-    def __init__(self, users: list[User]):  # TODO
+    def __init__(self, users: list[User]):
         self._length = len(users)
         for i, user in enumerate(users, start=1):
             setattr(self, f"user{i}", user)
+
+
+class FixturePolls(FixtureBase):
+    def __init__(self, polls: list[dict]):  # TODO schemas
+        self._length = len(polls)
+        for i, poll in enumerate(polls, start=1):
+            setattr(self, f"poll{i}", poll)

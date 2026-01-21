@@ -4,6 +4,7 @@ from pytest import Session
 from sqlalchemy import StaticPool, create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.utils.errors import PollNotFoundError
 from app.utils.twitch import TwitchClient
 
 postgres_url = f"postgresql://postgres:postgres@127.0.0.1:5432/sopapi"
@@ -29,6 +30,38 @@ class FakeTwitchClient(TwitchClient):
         username = f"{user_id}"
         email = f"user{user_id}@test.com"
         return username, email
+
+    async def get_poll(token: str, user_id: str, poll_id: str) -> dict:
+        if poll_id != "poll1":
+            raise PollNotFoundError()
+        return {
+            "poll_id": poll_id,
+            "title": "title1",
+            "choices": [
+                {"title": "choice1", "votes": 1},
+                {"title": "choice2", "votes": 2},
+            ],
+            "status": "ACTIVE",
+        }
+
+    async def end_poll(token: str, user_id: str, poll_id: str) -> dict:
+        if poll_id != "poll1":
+            raise PollNotFoundError()
+        return {
+            "poll_id": poll_id,
+            "title": "title1",
+            "choices": [
+                {"title": "choice1", "votes": 1},
+                {"title": "choice2", "votes": 2},
+            ],
+            "status": "TERMINATED",
+        }
+
+    # TODO custom duration
+    async def create_poll(
+        token: str, user_id: str, title: str, choices: list[str], duration: int = 60
+    ) -> dict:
+        return {"poll_id": "poll1"}
 
 
 def override_get_postgres_manager() -> Generator[Session]:
