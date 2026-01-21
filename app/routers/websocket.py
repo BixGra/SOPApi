@@ -143,11 +143,3 @@ async def connect_websocket(
                                         },
                                     },
                                 )
-                case WebSocketInputType.THING:
-                    await connection_manager.send_json(
-                        session_id,
-                        {
-                            "type": "thing",
-                            "data": True,
-                        },
-                    )

@@ -80,7 +80,6 @@ class PollEndOutput(BaseModel):
 class WebSocketOutputType(str, Enum):
     CONNECTION_STATUS = "connection_status"
     POLL = "poll"
-    THING = "thing"
     ERROR = "error"
 
 

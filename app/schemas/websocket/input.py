@@ -66,7 +66,6 @@ class PollEndInput(BaseModel):
 class WebSocketInputType(str, Enum):
     DISCONNECT = "disconnect"
     POLL = "poll"
-    THING = "thing"
 
 
 class DisconnectInput(BaseModel):
