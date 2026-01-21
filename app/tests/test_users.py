@@ -102,7 +102,7 @@ def setup_cookies():
     client.cookies.clear()
 
 
-# /users/is-logged-in
+# MARK: /users/is-logged-in
 
 
 def test_is_logged_in_no_cookies_returns_false(setup_users, setup_cookies):
@@ -123,10 +123,9 @@ def test_is_logged_in_expired_token_returns_false(setup_users, setup_cookies):
     response = client.get("/users/is-logged-in")
     assert response.status_code == 200
     assert response.json() == {"is_logged_in": False}
-    # dqtq response.json
 
 
-# /users/login
+# MARK: /users/login
 
 
 def test_login_ok(setup_cookies):
@@ -138,7 +137,7 @@ def test_login_ok(setup_cookies):
     assert client.cookies.get("state") == fake_state
 
 
-# /users/callback
+# MARK: /users/callback
 
 
 def test_callback_error_returns_TwitchCallbackError():
@@ -192,7 +191,7 @@ def test_callback_multiple_ok(
     assert client.cookies.get("session_id") == fake_session_id
 
 
-# /users/logout
+# MARK: /users/logout
 
 
 def test_logout_no_cookies_returns_NoSessionError(setup_cookies):

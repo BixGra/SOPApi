@@ -223,7 +223,7 @@ def setup_game_modes(game_modes) -> Generator[FixtureGameModes]:
     postgres_database.close()
 
 
-# /playlists/get-playlists
+# MARK: /playlists/get-playlists
 
 
 def test_get_playlists_ok(setup_playlists):
@@ -234,7 +234,7 @@ def test_get_playlists_ok(setup_playlists):
     assert data[0]["title"] == setup_playlists.playlist1.title
 
 
-# /playlists/get-playlist
+# MARK: /playlists/get-playlist
 
 
 def test_get_playlist_ok(setup_playlists):
@@ -257,7 +257,7 @@ def test_get_playlist_not_found_returns_PlaylistNotFoundError(setup_playlists):
     assert data["error_code"] == PlaylistNotFoundError().error_code
 
 
-# /playlists/get-playlist-items
+# MARK: /playlists/get-playlist-items
 
 
 def test_get_playlist_items_ok(setup_playlists_items):
@@ -284,7 +284,7 @@ def test_get_playlist_items_not_found_returns_PlaylistItemsNotFoundError(
     assert data["error_code"] == PlaylistItemsNotFoundError().error_code
 
 
-# /playlists/get-game-modes
+# MARK: /playlists/get-game-modes
 
 
 def test_get_game_modes_ok(setup_game_modes):
@@ -295,7 +295,7 @@ def test_get_game_modes_ok(setup_game_modes):
     assert data[0]["name"] == setup_game_modes.game_mode1.name
 
 
-# /playlists/get-game-mode
+# MARK: /playlists/get-game-mode
 
 
 def test_get_game_mode_ok(setup_game_modes):

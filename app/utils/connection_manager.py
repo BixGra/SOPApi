@@ -1,6 +1,6 @@
 from fastapi import WebSocket
 
-from app.schemas.websocket.output import WebSocketOutput
+from app.schemas.websocket import WebSocketOutput
 
 
 class ConnectionManager:
@@ -24,9 +24,8 @@ class ConnectionManager:
 
     async def send_json(self, session_id: str, payload: dict):
         websocket = self.active_connections[session_id]
-        print(payload)
         data = WebSocketOutput.model_validate({"payload": payload})
-        await websocket.send_json({"payload": payload})
+        await websocket.send_json(data.model_dump())
 
 
 connection_manager = ConnectionManager()

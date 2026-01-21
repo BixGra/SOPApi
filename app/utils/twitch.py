@@ -105,7 +105,7 @@ class TwitchClient:
             email = user["email"]
         return username, email
 
-    async def get_poll(self, token: str, user_id: str, poll_id: str) -> list[dict]:
+    async def get_poll(self, token: str, user_id: str, poll_id: str) -> dict:
         response = await self.client.get(
             create_poll,
             headers={
@@ -138,7 +138,7 @@ class TwitchClient:
         title: str,
         choices: list[str],
         duration: int = 60,
-    ) -> str:
+    ) -> dict:
         response = await self.client.post(
             create_poll,
             headers={
@@ -160,7 +160,7 @@ class TwitchClient:
             output = {"poll_id": poll["id"]}
         return output
 
-    async def end_poll(self, token: str, user_id: str, poll_id: str):
+    async def end_poll(self, token: str, user_id: str, poll_id: str) -> dict:
         response = await self.client.patch(
             create_poll,
             headers={

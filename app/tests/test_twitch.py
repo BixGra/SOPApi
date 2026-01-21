@@ -228,9 +228,7 @@ def twitch_client():
     return TwitchClient()
 
 
-############
-# requests #
-############
+# MARK: Request
 
 
 @pytest.mark.asyncio
@@ -323,9 +321,7 @@ async def test_end_poll_request_ok(twitch_api_mock, twitch_client):
     assert "status=TERMINATED" in data
 
 
-###########
-# outuput #
-###########
+# MARK: Output
 
 
 @pytest.mark.asyncio
@@ -339,7 +335,7 @@ async def test_get_authorization_url_ok(twitch_client):
 
 
 @pytest.mark.asyncio
-async def test_callback_request_ok(twitch_id_mock, twitch_client):
+async def test_callback_output_ok(twitch_id_mock, twitch_client):
     user_id, token, refresh_token = await twitch_client.callback("fake_code")
     assert user_id == "user1"
     assert token == "token1"
@@ -347,7 +343,7 @@ async def test_callback_request_ok(twitch_id_mock, twitch_client):
 
 
 @pytest.mark.asyncio
-async def test_is_valid_token_request_ok(twitch_api_mock, twitch_client):
+async def test_is_valid_token_output_ok(twitch_api_mock, twitch_client):
     is_valid = await twitch_client.is_token_valid(token="token1", user_id="user1")
     assert is_valid == True
 

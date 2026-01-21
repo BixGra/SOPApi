@@ -6,12 +6,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.crud.users import UsersCRUD
-from app.schemas.users import IsLoggedIn
-from app.schemas.websocket.input import (
-    PollInputType,
-    WebSocketInput,
-    WebSocketInputType,
-)
+from app.schemas.websocket import PollInputType, WebSocketInput, WebSocketInputType
 from app.utils.connection_manager import ConnectionManager
 from app.utils.dependencies import (
     get_connection_manager,
@@ -21,6 +16,7 @@ from app.utils.dependencies import (
 )
 from app.utils.errors import (
     IncorrectPayloadError,
+    IncorrectWebsocketInputError,
     MissingPayloadError,
     MissingTypeFieldError,
     NotLoggedInError,
@@ -54,6 +50,9 @@ async def connect_websocket(
         data = await websocket.receive_json()
         try:
             data = WebSocketInput.model_validate(data)
+        except IncorrectWebsocketInputError:
+            payload = IncorrectWebsocketInputError().json()
+            await connection_manager.send_json(session_id, payload)
         except MissingPayloadError:
             payload = MissingPayloadError().json()
             await connection_manager.send_json(session_id, payload)

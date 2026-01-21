@@ -18,7 +18,7 @@ class SOPApiError(Exception):
         }
 
 
-# Base
+# MARK: Base
 
 
 class BaseError(SOPApiError):
@@ -28,7 +28,7 @@ class BaseError(SOPApiError):
         self.title = text
 
 
-# Postgres
+# MARK: Postgres
 
 
 class PlaylistNotFoundError(SOPApiError):
@@ -59,7 +59,7 @@ class UserNotFoundError(SOPApiError):
         self.title = "User not found"
 
 
-# Twitch
+# MARK: Twitch
 
 
 class TwitchStatesError(SOPApiError):
@@ -90,7 +90,7 @@ class PollNotFoundError(SOPApiError):
         self.title = "Poll ID not found for this user"
 
 
-# Websocket
+# MARK: Websocket
 
 
 class NotLoggedInError(SOPApiError):
@@ -128,7 +128,21 @@ class IncorrectPayloadError(SOPApiError):
         self.title = "Incorrect payload"
 
 
-# Front End
+class IncorrectWebsocketInputError(SOPApiError):
+    def __init__(self):
+        self.error_code = "W06"
+        self.status_code = 422
+        self.title = "Incorrect websocket input format"
+
+
+class IncorrectWebsocketOutputError(SOPApiError):
+    def __init__(self):
+        self.error_code = "W07"
+        self.status_code = 422
+        self.title = "Incorrect websocket output format"
+
+
+# MARK: Front End
 
 
 class NoSessionError(SOPApiError):

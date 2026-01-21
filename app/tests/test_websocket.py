@@ -2,7 +2,6 @@ from typing import Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from fastapi.websockets import WebSocketDisconnect
 from starlette.testclient import WebSocketDenialResponse
 
 from app.main import app
@@ -17,6 +16,7 @@ from app.tests.fixtures.fixtures_classes import FixtureUsers
 from app.utils.dependencies import get_postgres_database, get_twitch_client
 from app.utils.errors import (
     IncorrectPayloadError,
+    IncorrectWebsocketInputError,
     MissingPayloadError,
     MissingTypeFieldError,
     PollNotFoundError,
@@ -85,11 +85,16 @@ def setup_cookies():
     client.cookies.clear()
 
 
-# /websocket/connect
+@pytest.fixture
+def websocket_connect(setup_users, setup_cookies):
+    client.cookies.set("session_id", setup_users.user1.session_id)
+    with client.websocket_connect("/websocket/connect") as websocket:
+        data = websocket.receive_json()
+        print(data)
+        yield websocket
 
-##############
-# connection #
-##############
+
+# MARK: -Connection
 
 
 def test_websocket_connection_no_cookies_returns_WebSocketDenialResponse(setup_cookies):
@@ -116,549 +121,488 @@ def test_websocket_disconnection_ok(setup_users, setup_cookies):
         }
 
 
-##################
-# json formating #
-##################
+# MARK: -Json Formating
 
 
-def test_websocket_json_missing_payload_returns_MissingPayloadError(
-    setup_users, setup_cookies
-):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json({"not_a_payload": "anything"})
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == MissingPayloadError().json()
+def test_bad_websocket_input_returns_IncorrectWebsocketOutputError(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json(123456789)
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    print(payload)
+    assert payload == IncorrectWebsocketInputError().json()
 
 
-def test_websocket_json_missing_type_returns_MissingTypeFieldError(
-    setup_users, setup_cookies
-):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json({"payload": {"not_a_type": "lorem ipsum"}})
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == MissingTypeFieldError().json()
+def test_websocket_json_missing_payload_returns_MissingPayloadError(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json({"not_a_payload": "anything"})
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == MissingPayloadError().json()
 
 
-def test_websocket_json_missing_type_returns_UnknownTypeFieldError(
-    setup_users, setup_cookies
-):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json({"payload": {"type": "unknown_type"}})
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == UnknownTypeFieldError().json()
+def test_websocket_json_missing_type_returns_MissingTypeFieldError(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json({"payload": {"not_a_type": "lorem ipsum"}})
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == MissingTypeFieldError().json()
 
 
-#########
-# polls #
-#########
+def test_websocket_json_missing_type_returns_UnknownTypeFieldError(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json({"payload": {"type": "unknown_type"}})
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == UnknownTypeFieldError().json()
 
 
-# general tests
+# MARK: -Polls
 
 
-def test_websocket_poll_missing_type_returns_IncorrectPayloadError(
-    setup_users, setup_cookies
-):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
-                    "data": {
-                        "not_a_type": "anything",
-                    },
-                }
+def test_websocket_poll_missing_type_returns_IncorrectPayloadError(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "not_a_type": "anything",
+                },
             }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == IncorrectPayloadError().json()
+        }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == IncorrectPayloadError().json()
 
 
-def test_websocket_poll_wrong_type_returns_IncorrectPayloadError(
-    setup_users, setup_cookies
-):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
-                    "data": {
-                        "type": "wrong_type",
-                    },
-                }
+def test_websocket_poll_wrong_type_returns_IncorrectPayloadError(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "type": "wrong_type",
+                },
             }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == IncorrectPayloadError().json()
+        }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == IncorrectPayloadError().json()
 
 
-# create poll
+# MARK: Create
 
 
 def test_websocket_create_poll_wrong_data_returns_IncorrectPayloadError(
-    setup_users, setup_cookies
+    websocket_connect,
 ):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
-                    "data": {
-                        "type": "start",
-                        "data": "wrong_data",
-                    },
-                }
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "type": "start",
+                    "data": "wrong_data",
+                },
             }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == IncorrectPayloadError().json()
+        }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == IncorrectPayloadError().json()
 
 
 def test_websocket_create_poll_missing_title_returns_IncorrectPayloadError(
-    setup_users, setup_cookies
+    websocket_connect,
 ):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
-                    "data": {
-                        "type": "start",
-                        "data": {
-                            "choices": ["choice1", "choice2"],
-                        },
-                    },
-                }
-            }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == IncorrectPayloadError().json()
-
-
-def test_websocket_create_poll_missing_choices_returns_IncorrectPayloadError(
-    setup_users, setup_cookies
-):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
-                    "data": {
-                        "type": "start",
-                        "data": {
-                            "title": "poll 1",
-                        },
-                    },
-                }
-            }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == IncorrectPayloadError().json()
-
-
-def test_websocket_create_poll_title_too_long_returns_IncorrectPayloadError(
-    setup_users, setup_cookies
-):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
-                    "data": {
-                        "type": "start",
-                        "data": {
-                            "title": "poll title that is way too long for the specifications of twitch api",
-                            "choices": [
-                                "choice1",
-                                "choice2",
-                            ],
-                        },
-                    },
-                }
-            }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == IncorrectPayloadError().json()
-
-
-def test_websocket_create_poll_choice_too_long_returns_IncorrectPayloadError(
-    setup_users, setup_cookies
-):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
-                    "data": {
-                        "type": "start",
-                        "data": {
-                            "title": "poll 1",
-                            "choices": [
-                                "choice1",
-                                "choice2",
-                                "choice_way_too_long_that_doesn_t_pass_the_test",
-                            ],
-                        },
-                    },
-                }
-            }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == IncorrectPayloadError().json()
-
-
-def test_websocket_create_poll_too_many_choices_returns_IncorrectPayloadError(
-    setup_users, setup_cookies
-):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
-                    "data": {
-                        "type": "start",
-                        "data": {
-                            "title": "poll 1",
-                            "choices": [
-                                "choice1",
-                                "choice2",
-                                "choice3",
-                                "choice4",
-                                "choice5",
-                                "choice6",
-                            ],
-                        },
-                    },
-                }
-            }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == IncorrectPayloadError().json()
-
-
-def test_websocket_create_poll_not_enough_choices_returns_IncorrectPayloadError(
-    setup_users, setup_cookies
-):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
-                    "data": {
-                        "type": "start",
-                        "data": {
-                            "title": "poll 1",
-                            "choices": ["choice1"],
-                        },
-                    },
-                }
-            }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == IncorrectPayloadError().json()
-
-
-def test_websocket_create_poll_ok(setup_users, setup_cookies):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
-                    "data": {
-                        "type": "start",
-                        "data": {
-                            "title": "poll 1",
-                            "choices": ["choice1", "choice2"],
-                        },
-                    },
-                }
-            }
-        )
-        data = websocket.receive_json()
-        assert data == {
+    websocket = websocket_connect
+    websocket.send_json(
+        {
             "payload": {
                 "type": "poll",
                 "data": {
                     "type": "start",
                     "data": {
-                        "poll_id": "poll1",
+                        "choices": ["choice1", "choice2"],
                     },
                 },
             }
         }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == IncorrectPayloadError().json()
 
 
-# get poll
-
-
-def test_websocket_get_poll_wrong_data_returns_IncorrectPayloadError(
-    setup_users, setup_cookies
+def test_websocket_create_poll_missing_choices_returns_IncorrectPayloadError(
+    websocket_connect,
 ):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "type": "start",
                     "data": {
-                        "type": "get",
-                        "data": "wrong_data",
+                        "title": "poll 1",
                     },
-                }
+                },
             }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == IncorrectPayloadError().json()
+        }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == IncorrectPayloadError().json()
 
 
-def test_websocket_get_poll_missing_id_returns_IncorrectPayloadError(
-    setup_users, setup_cookies
+def test_websocket_create_poll_title_too_long_returns_IncorrectPayloadError(
+    websocket_connect,
 ):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "type": "start",
                     "data": {
-                        "type": "get",
-                        "data": {
-                            "not_an_id": "anything",
-                        },
+                        "title": "poll title that is way too long for the specifications of twitch api",
+                        "choices": [
+                            "choice1",
+                            "choice2",
+                        ],
                     },
-                }
+                },
             }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == IncorrectPayloadError().json()
+        }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == IncorrectPayloadError().json()
 
 
-def test_websocket_get_poll_not_found_returns_PollNotFoundError(
-    setup_users, setup_cookies
+def test_websocket_create_poll_choice_too_long_returns_IncorrectPayloadError(
+    websocket_connect,
 ):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "type": "start",
                     "data": {
-                        "type": "get",
-                        "data": {
-                            "poll_id": "id_that_doesn_t_exists",
-                        },
+                        "title": "poll 1",
+                        "choices": [
+                            "choice1",
+                            "choice2",
+                            "choice_way_too_long_that_doesn_t_pass_the_test",
+                        ],
                     },
-                }
+                },
             }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == PollNotFoundError().json()
+        }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == IncorrectPayloadError().json()
 
 
-def test_websocket_get_poll_ok(setup_users, setup_cookies):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
+def test_websocket_create_poll_too_many_choices_returns_IncorrectPayloadError(
+    websocket_connect,
+):
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "type": "start",
                     "data": {
-                        "type": "get",
-                        "data": {
-                            "poll_id": "poll1",
-                        },
+                        "title": "poll 1",
+                        "choices": [
+                            "choice1",
+                            "choice2",
+                            "choice3",
+                            "choice4",
+                            "choice5",
+                            "choice6",
+                        ],
                     },
-                }
+                },
             }
-        )
-        data = websocket.receive_json()
-        assert data == {
+        }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == IncorrectPayloadError().json()
+
+
+def test_websocket_create_poll_not_enough_choices_returns_IncorrectPayloadError(
+    websocket_connect,
+):
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "type": "start",
+                    "data": {
+                        "title": "poll 1",
+                        "choices": ["choice1"],
+                    },
+                },
+            }
+        }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == IncorrectPayloadError().json()
+
+
+def test_websocket_create_poll_ok(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "type": "start",
+                    "data": {
+                        "title": "poll 1",
+                        "choices": ["choice1", "choice2"],
+                    },
+                },
+            }
+        }
+    )
+    data = websocket.receive_json()
+    assert data == {
+        "payload": {
+            "type": "poll",
+            "data": {
+                "type": "start",
+                "data": {
+                    "poll_id": "poll1",
+                },
+            },
+        }
+    }
+
+
+# MARK: Get
+
+
+def test_websocket_get_poll_wrong_data_returns_IncorrectPayloadError(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "type": "get",
+                    "data": "wrong_data",
+                },
+            }
+        }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == IncorrectPayloadError().json()
+
+
+def test_websocket_get_poll_missing_id_returns_IncorrectPayloadError(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "type": "get",
+                    "data": {
+                        "not_an_id": "anything",
+                    },
+                },
+            }
+        }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == IncorrectPayloadError().json()
+
+
+def test_websocket_get_poll_not_found_returns_PollNotFoundError(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "type": "get",
+                    "data": {
+                        "poll_id": "id_that_doesn_t_exists",
+                    },
+                },
+            }
+        }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == PollNotFoundError().json()
+
+
+def test_websocket_get_poll_ok(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json(
+        {
             "payload": {
                 "type": "poll",
                 "data": {
                     "type": "get",
                     "data": {
                         "poll_id": "poll1",
-                        "title": "title1",
-                        "choices": [
-                            {"title": "choice1", "votes": 1},
-                            {"title": "choice2", "votes": 2},
-                        ],
-                        "status": "ACTIVE",
                     },
                 },
             }
         }
+    )
+    data = websocket.receive_json()
+    assert data == {
+        "payload": {
+            "type": "poll",
+            "data": {
+                "type": "get",
+                "data": {
+                    "poll_id": "poll1",
+                    "title": "title1",
+                    "choices": [
+                        {"title": "choice1", "votes": 1},
+                        {"title": "choice2", "votes": 2},
+                    ],
+                    "status": "ACTIVE",
+                },
+            },
+        }
+    }
 
 
-# end poll
+# MARK: End
 
 
-def test_websocket_end_poll_wrong_data_returns_IncorrectPayloadError(
-    setup_users, setup_cookies
-):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
-                    "data": {
-                        "type": "end",
-                        "data": "wrong_data",
-                    },
-                }
+def test_websocket_end_poll_wrong_data_returns_IncorrectPayloadError(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "type": "end",
+                    "data": "wrong_data",
+                },
             }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == IncorrectPayloadError().json()
+        }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == IncorrectPayloadError().json()
 
 
-def test_websocket_end_poll_missing_id_returns_IncorrectPayloadError(
-    setup_users, setup_cookies
-):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
+def test_websocket_end_poll_missing_id_returns_IncorrectPayloadError(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "type": "end",
                     "data": {
-                        "type": "end",
-                        "data": {
-                            "not_an_id": "anything",
-                        },
+                        "not_an_id": "anything",
                     },
-                }
+                },
             }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == IncorrectPayloadError().json()
+        }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == IncorrectPayloadError().json()
 
 
-def test_websocket_end_poll_not_found_returns_PollNotFoundError(
-    setup_users, setup_cookies
-):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
+def test_websocket_end_poll_not_found_returns_PollNotFoundError(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json(
+        {
+            "payload": {
+                "type": "poll",
+                "data": {
+                    "type": "end",
                     "data": {
-                        "type": "end",
-                        "data": {
-                            "poll_id": "id_that_doesn_t_exists",
-                        },
+                        "poll_id": "id_that_doesn_t_exists",
                     },
-                }
+                },
             }
-        )
-        data = websocket.receive_json()
-        assert "payload" in data
-        payload = data["payload"]
-        assert payload == PollNotFoundError().json()
+        }
+    )
+    data = websocket.receive_json()
+    assert "payload" in data
+    payload = data["payload"]
+    assert payload == PollNotFoundError().json()
 
 
-def test_websocket_end_poll_ok(setup_users, setup_cookies):
-    client.cookies.set("session_id", setup_users.user1.session_id)
-    with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json(
-            {
-                "payload": {
-                    "type": "poll",
-                    "data": {
-                        "type": "end",
-                        "data": {
-                            "poll_id": "poll1",
-                        },
-                    },
-                }
-            }
-        )
-        data = websocket.receive_json()
-        assert data == {
+def test_websocket_end_poll_ok(websocket_connect):
+    websocket = websocket_connect
+    websocket.send_json(
+        {
             "payload": {
                 "type": "poll",
                 "data": {
                     "type": "end",
                     "data": {
                         "poll_id": "poll1",
-                        "title": "title1",
-                        "choices": [
-                            {"title": "choice1", "votes": 1},
-                            {"title": "choice2", "votes": 2},
-                        ],
-                        "status": "TERMINATED",
                     },
                 },
             }
         }
+    )
+    data = websocket.receive_json()
+    assert data == {
+        "payload": {
+            "type": "poll",
+            "data": {
+                "type": "end",
+                "data": {
+                    "poll_id": "poll1",
+                    "title": "title1",
+                    "choices": [
+                        {"title": "choice1", "votes": 1},
+                        {"title": "choice2", "votes": 2},
+                    ],
+                    "status": "TERMINATED",
+                },
+            },
+        }
+    }
