@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -13,9 +13,11 @@ from app.utils.errors import SOPApiError
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    scheduler = BackgroundScheduler()
+    scheduler = AsyncIOScheduler()
     delay = 300
-    scheduler.add_job(connection_manager.check_stale(delay), "interval", seconds=delay)
+    scheduler.add_job(
+        connection_manager.check_stale, "interval", seconds=delay, args=[delay]
+    )
     scheduler.start()
     yield
     scheduler.shutdown()
