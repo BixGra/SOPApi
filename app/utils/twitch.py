@@ -1,6 +1,5 @@
 import httpx
 
-from app.schemas.users import User
 from app.utils.config import get_settings
 from app.utils.errors import BaseError
 from app.utils.tools import data_to_query_parameters
@@ -18,7 +17,6 @@ create_poll = "https://api.twitch.tv/helix/polls"
 scope = " ".join(
     [
         "channel:manage:polls",
-        "channel:manage:predictions",
         "user:read:email",
     ]
 )
@@ -101,7 +99,88 @@ class TwitchClient:
         if response.status_code != 200:
             raise BaseError("twitch get error")
         else:
-            data = response.json()["data"][0]
-            username = data["display_name"]
-            email = data["email"]
+            data = response.json()["data"]
+            user = data[0]
+            username = user["display_name"]
+            email = user["email"]
         return username, email
+
+    async def get_poll(self, token: str, user_id: str, poll_id: str) -> list[dict]:
+        response = await self.client.get(
+            create_poll,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Client-Id": get_settings().twitch_id,
+            },
+            params={"broadcaster_id": user_id, "id": poll_id},
+        )
+        if response.status_code != 200:
+            raise BaseError("twitch get poll error")
+        else:
+            data = response.json()["data"]
+            poll = data[0]
+            output = {
+                "poll_id": poll["id"],
+                "title": poll["title"],
+                "choices": [
+                    {"title": choice["title"], "votes": choice["votes"]}
+                    for choice in poll["choices"]
+                ],
+                "status": poll["status"],
+            }
+        return output
+
+    # TODO custom duration
+    async def create_poll(
+        self,
+        token: str,
+        user_id: str,
+        title: str,
+        choices: list[str],
+        duration: int = 60,
+    ) -> str:
+        response = await self.client.post(
+            create_poll,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Client-Id": get_settings().twitch_id,
+            },
+            data={
+                "broadcaster_id": user_id,
+                "title": title,
+                "choices": [{"title": choice} for choice in choices],
+                "duration": duration,
+            },
+        )
+        if response.status_code != 200:
+            raise BaseError("twitch create poll error")
+        else:
+            data = response.json()["data"]
+            poll = data[0]
+            output = {"poll_id": poll["id"]}
+        return output
+
+    async def end_poll(self, token: str, user_id: str, poll_id: str):
+        response = await self.client.patch(
+            create_poll,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Client-Id": get_settings().twitch_id,
+            },
+            data={"broadcaster_id": user_id, "id": poll_id, "status": "TERMINATED"},
+        )
+        if response.status_code != 200:
+            raise BaseError("twitch end poll error")
+        else:
+            data = response.json()["data"]
+            poll = data[0]
+            output = {
+                "poll_id": poll["id"],
+                "title": poll["title"],
+                "choices": [
+                    {"title": choice["title"], "votes": choice["votes"]}
+                    for choice in poll["choices"]
+                ],
+                "status": poll["status"],
+            }
+        return output

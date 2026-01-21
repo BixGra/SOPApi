@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Callable
 
 from fastapi import APIRouter, Query, Request
 from fastapi.params import Depends
@@ -9,6 +9,7 @@ from app.crud.users import UsersCRUD
 from app.schemas.users import CallbackInput, GetUserInput, IsLoggedIn, User
 from app.utils.config import get_settings
 from app.utils.dependencies import (
+    get_is_user_logged_in,
     get_postgres_database,
     get_session_id,
     get_state,
@@ -19,7 +20,6 @@ from app.utils.errors import (
     PotentialCSRFError,
     TwitchCallbackError,
     TwitchStatesError,
-    UserNotFoundError,
 )
 from app.utils.twitch import TwitchClient
 
@@ -29,20 +29,9 @@ router = APIRouter(tags=["Users"], prefix="/users")
 @router.get("/is-logged-in")
 async def is_logged_in(
     request: Request,
-    twitch_client: TwitchClient = Depends(get_twitch_client),
-    postgres_database: Session = Depends(get_postgres_database),
+    is_user_logged_in: Callable = Depends(get_is_user_logged_in),
 ) -> IsLoggedIn:
-    session_id = request.cookies.get("session_id")
-    if not session_id:
-        return {"is_logged_in": False}
-    try:
-        user = UsersCRUD(postgres_database).get_user(session_id)
-        is_logged_in = await twitch_client.is_token_valid(
-            user[0].token, user[0].user_id
-        )
-        return {"is_logged_in": is_logged_in}
-    except UserNotFoundError:
-        return {"is_logged_in": False}
+    return await is_user_logged_in(request)
 
 
 @router.get("/login")

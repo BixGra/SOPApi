@@ -11,6 +11,7 @@ class SOPApiError(Exception):
 
     def json(self) -> dict:
         return {
+            "type": "error",
             "error_code": self.error_code,
             "status_code": self.status_code,
             "title": self.title,
@@ -80,6 +81,51 @@ class PotentialCSRFError(SOPApiError):
         self.error_code = "T03"
         self.status_code = 403
         self.title = "Potential Cross-Site Request Forgery"
+
+
+class PollNotFoundError(SOPApiError):
+    def __init__(self):
+        self.error_code = "T04"
+        self.status_code = 404
+        self.title = "Poll ID not found for this user"
+
+
+# Websocket
+
+
+class NotLoggedInError(SOPApiError):
+    def __init__(self):
+        self.error_code = "W01"
+        self.status_code = 401
+        self.title = "Tried to connect to websocket while not logged in"
+
+
+class MissingTypeFieldError(SOPApiError):
+    def __init__(self):
+        self.error_code = "W02"
+        self.status_code = 422
+        self.title = "Missing type field"
+
+
+class UnknownTypeFieldError(SOPApiError):
+    def __init__(self):
+        self.error_code = "W03"
+        self.status_code = 404
+        self.title = "Unknown type field"
+
+
+class MissingPayloadError(SOPApiError):
+    def __init__(self):
+        self.error_code = "W04"
+        self.status_code = 422
+        self.title = "Missing payload"
+
+
+class IncorrectPayloadError(SOPApiError):
+    def __init__(self):
+        self.error_code = "W05"
+        self.status_code = 422
+        self.title = "Incorrect payload"
 
 
 # Front End

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Text, Time
+from sqlalchemy import Column, Text, Time
 
 from app.utils.database import Base
 

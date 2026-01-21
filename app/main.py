@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.routers import playlists, users
+from app.routers import playlists, users, websocket
 from app.utils.config import get_settings
 from app.utils.errors import SOPApiError
 
@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.include_router(playlists.router)
 app.include_router(users.router)
+app.include_router(websocket.router)
 
 
 origins = get_settings().origins

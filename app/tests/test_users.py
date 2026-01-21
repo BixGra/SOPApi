@@ -133,7 +133,7 @@ def test_login_ok(setup_cookies):
     response = client.get("/users/login")
     assert (
         response.url
-        == f"https://id.twitch.tv/oauth2/authorize?client_id={get_settings().twitch_id}&response_type=code&state={fake_state}&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Fusers%2Fcallback&scope=channel%3Amanage%3Apolls+channel%3Amanage%3Apredictions+user%3Aread%3Aemail"
+        == f"https://id.twitch.tv/oauth2/authorize?client_id={get_settings().twitch_id}&response_type=code&state={fake_state}&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Fusers%2Fcallback&scope=channel%3Amanage%3Apolls+user%3Aread%3Aemail"
     )
     assert client.cookies.get("state") == fake_state
 
