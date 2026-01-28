@@ -40,7 +40,6 @@ def get_get_token(
         http_connexion: HTTPConnection,
     ) -> str | None:
         session_id = http_connexion.cookies.get("session_id")
-        print(session_id)
 
         if not session_id:
             return
