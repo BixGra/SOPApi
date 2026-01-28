@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Text, Time
+from sqlalchemy import Column, Text
 
 from app.utils.database import Base
 
@@ -11,4 +11,3 @@ class UserBase(Base):
     token = Column(Text)
     refresh_token = Column(Text)
     session_id = Column(Text)
-    # expires_at = Column(Time)

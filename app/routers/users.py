@@ -9,7 +9,7 @@ from app.crud.users import UsersCRUD
 from app.schemas.users import CallbackInput, GetUserInput, IsLoggedIn, User
 from app.utils.config import get_settings
 from app.utils.dependencies import (
-    get_is_user_logged_in,
+    get_get_token,
     get_postgres_database,
     get_session_id,
     get_state,
@@ -29,9 +29,10 @@ router = APIRouter(tags=["Users"], prefix="/users")
 @router.get("/is-logged-in")
 async def is_logged_in(
     request: Request,
-    is_user_logged_in: Callable = Depends(get_is_user_logged_in),
+    get_token: Callable = Depends(get_get_token),
 ) -> IsLoggedIn:
-    return await is_user_logged_in(request)
+    token = await get_token(request)
+    return IsLoggedIn.model_validate({"is_logged_in": bool(token)})
 
 
 @router.get("/login")
@@ -58,7 +59,8 @@ async def callback(
         raise TwitchStatesError
     if not request.cookies.get("state") == callback_input.state:
         raise PotentialCSRFError
-    user_id, token, refresh_token = await twitch_client.callback(callback_input.code)
+    token, refresh_token, expires_in = await twitch_client.callback(callback_input.code)
+    user_id = await twitch_client.validate(token)
     username, email = await twitch_client.get_user(token, user_id)
     if UsersCRUD(postgres_database).exists_user(user_id):
         UsersCRUD(postgres_database).update_user(
@@ -79,6 +81,9 @@ async def callback(
     response = RedirectResponse(f"{get_settings().front_base_url}/callback")
     response.set_cookie(
         key="session_id", value=session_id, domain=get_settings().cookie_domain
+    )
+    response.set_cookie(
+        key="expires_in", value=expires_in, domain=get_settings().cookie_domain
     )
     return response
 

@@ -13,18 +13,16 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 
 class FakeTwitchClient(TwitchClient):
-    async def callback(code: str) -> tuple[str, str, str]:
+    async def callback(code: str) -> tuple[str, str, str, int]:
         # Always returns user3
         token = "token3"
         refresh_token = "refresh_token3"
-        # expires_in = data["expires_in"]
+        expires_in = 1234
 
-        user_id = "3"
+        return token, refresh_token, expires_in
 
-        return user_id, token, refresh_token
-
-    async def is_token_valid(token: str, user_id: str) -> bool:
-        return "expired" not in token
+    async def validate(token: str) -> bool:
+        return token if "expired" not in token else None
 
     async def get_user(token: str, user_id: str) -> tuple[str, str]:
         username = f"{user_id}"

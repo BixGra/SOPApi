@@ -118,11 +118,11 @@ def test_is_logged_in_ok(setup_users, setup_cookies):
     assert response.json() == {"is_logged_in": True}
 
 
-def test_is_logged_in_expired_token_returns_false(setup_users, setup_cookies):
+def test_is_logged_in_expired_token_get_new_token_ok(setup_users, setup_cookies):
     client.cookies.set("session_id", setup_users.user2.session_id)
     response = client.get("/users/is-logged-in")
     assert response.status_code == 200
-    assert response.json() == {"is_logged_in": False}
+    assert response.json() == {"is_logged_in": True}
 
 
 # MARK: /users/login

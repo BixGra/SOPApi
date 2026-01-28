@@ -2,7 +2,7 @@ import time
 
 from fastapi import WebSocket
 
-from app.schemas.websocket import ActiveConnection, WebSocketOutput
+from app.schemas.websocket import ActiveConnection, WebSocketOutput, WebSocketOutputType
 
 
 class ConnectionManager:
@@ -16,14 +16,12 @@ class ConnectionManager:
             connection
         )
         await self.send_json(
-            session_id, {"type": "connection_status", "status": "connected"}
+            session_id,
+            {"type": WebSocketOutputType.CONNECTION_STATUS, "status": "connected"},
         )
 
     async def disconnect(self, session_id: str):
         websocket = self.active_connections[session_id].websocket
-        await self.send_json(
-            session_id, {"type": "connection_status", "status": "disconnected"}
-        )
         await websocket.close()
         del self.active_connections[session_id]
 
@@ -31,6 +29,7 @@ class ConnectionManager:
         websocket = self.active_connections[session_id].websocket
         data = WebSocketOutput.model_validate({"payload": payload})
         await websocket.send_json(data.model_dump())
+        self.update_activity(session_id)
 
     def update_activity(self, session_id: str):
         self.active_connections[session_id].last_seen = time.time()
@@ -44,11 +43,6 @@ class ConnectionManager:
 
         for session_id in to_close:
             await self.disconnect(session_id)
-
-    # TODO: detect and close stale connections
-    # TODO: handle send fails
-    # TODO: KeyError
-    # TODO: cleaning and proper testing
 
 
 connection_manager = ConnectionManager()

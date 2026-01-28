@@ -16,7 +16,7 @@ def twitch_id_mock():
                 200,
                 json={
                     "access_token": "token1",
-                    "expires_in": 14124,
+                    "expires_in": 1234,
                     "refresh_token": "refresh_token1",
                     "scope": [
                         "channel:manage:polls",
@@ -37,7 +37,7 @@ def twitch_id_mock():
                         "user:read:email",
                     ],
                     "user_id": "user1",
-                    "expires_in": 5520838,
+                    "expires_in": 1234,
                 },
             )
         )
@@ -54,7 +54,7 @@ def twitch_api_mock():
                 200,
                 json={
                     "access_token": "token1",
-                    "expires_in": 14124,
+                    "expires_in": 1234,
                     "refresh_token": "refresh_token1",
                     "scope": [
                         "channel:manage:polls",
@@ -75,7 +75,7 @@ def twitch_api_mock():
                         "user:read:email",
                     ],
                     "user_id": "user1",
-                    "expires_in": 5520838,
+                    "expires_in": 1234,
                 },
             )
         )
@@ -246,20 +246,14 @@ async def test_callback_request_ok(twitch_id_mock, twitch_client):
     assert f"grant_type=authorization_code" in data
     assert f"code=code" in data
 
+
+@pytest.mark.asyncio
+async def test_validate_request_ok(twitch_id_mock, twitch_client):
+    await twitch_client.validate(token="token1")
     assert twitch_id_mock["validate"].called
     route = twitch_id_mock["validate"]
     url = str(route.calls.last.request.url)
     assert "https://id.twitch.tv/oauth2/validate" in url
-
-
-@pytest.mark.asyncio
-async def test_is_valid_token_request_ok(twitch_api_mock, twitch_client):
-    await twitch_client.get_user(token="token1", user_id="user1")
-    assert twitch_api_mock["get_user"].called
-    route = twitch_api_mock["get_user"]
-    url = str(route.calls.last.request.url)
-    assert "https://api.twitch.tv/helix/users" in url
-    assert "id=user1" in url
 
 
 @pytest.mark.asyncio
@@ -336,16 +330,16 @@ async def test_get_authorization_url_ok(twitch_client):
 
 @pytest.mark.asyncio
 async def test_callback_output_ok(twitch_id_mock, twitch_client):
-    user_id, token, refresh_token = await twitch_client.callback("fake_code")
-    assert user_id == "user1"
+    token, refresh_token, expires_in = await twitch_client.callback("fake_code")
     assert token == "token1"
     assert refresh_token == "refresh_token1"
+    assert expires_in == 1234
 
 
 @pytest.mark.asyncio
-async def test_is_valid_token_output_ok(twitch_api_mock, twitch_client):
-    is_valid = await twitch_client.is_token_valid(token="token1", user_id="user1")
-    assert is_valid == True
+async def test_validate_output_ok(twitch_id_mock, twitch_client):
+    is_valid = await twitch_client.validate(token="token1")
+    assert is_valid == "user1"
 
 
 @pytest.mark.asyncio

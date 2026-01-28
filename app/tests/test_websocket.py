@@ -13,6 +13,7 @@ from app.tests.fixtures.fixtures_artifact import (
     override_get_twitch_client,
 )
 from app.tests.fixtures.fixtures_classes import FixtureUsers
+from app.utils.connection_manager import connection_manager
 from app.utils.dependencies import get_postgres_database, get_twitch_client
 from app.utils.errors import (
     IncorrectPayloadError,
@@ -90,7 +91,6 @@ def websocket_connect(setup_users, setup_cookies):
     client.cookies.set("session_id", setup_users.user1.session_id)
     with client.websocket_connect("/websocket/connect") as websocket:
         data = websocket.receive_json()
-        print(data)
         yield websocket
 
 
@@ -113,12 +113,9 @@ def test_websocket_connection_ok(setup_users, setup_cookies):
 def test_websocket_disconnection_ok(setup_users, setup_cookies):
     client.cookies.set("session_id", setup_users.user1.session_id)
     with client.websocket_connect("/websocket/connect") as websocket:
-        data = websocket.receive_json()
-        websocket.send_json({"payload": {"type": "disconnect"}})
-        data = websocket.receive_json()
-        assert data == {
-            "payload": {"type": "connection_status", "status": "disconnected"}
-        }
+        websocket.receive_json()
+        assert setup_users.user1.session_id in connection_manager.active_connections
+    assert setup_users.user1.session_id not in connection_manager.active_connections
 
 
 # MARK: -Json Formating
@@ -130,7 +127,6 @@ def test_bad_websocket_input_returns_IncorrectWebsocketOutputError(websocket_con
     data = websocket.receive_json()
     assert "payload" in data
     payload = data["payload"]
-    print(payload)
     assert payload == IncorrectWebsocketInputError().json()
 
 

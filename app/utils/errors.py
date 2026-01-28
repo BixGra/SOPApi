@@ -90,6 +90,13 @@ class PollNotFoundError(SOPApiError):
         self.title = "Poll ID not found for this user"
 
 
+class InvalidTokenError(SOPApiError):
+    def __init__(self):
+        self.error_code = "T05"
+        self.status_code = 401
+        self.title = "User's token is invalid"
+
+
 # MARK: Websocket
 
 

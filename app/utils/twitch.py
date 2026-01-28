@@ -1,7 +1,7 @@
 import httpx
 
 from app.utils.config import get_settings
-from app.utils.errors import BaseError
+from app.utils.errors import BaseError, InvalidTokenError
 from app.utils.tools import data_to_query_parameters
 
 redirect_uri = f"{get_settings().base_url}/users/callback"
@@ -43,7 +43,7 @@ class TwitchClient:
             )
         )
 
-    async def callback(self, code: str) -> tuple[str, str, str]:
+    async def callback(self, code: str) -> tuple[str, str, int]:
         response = await self.client.post(
             token_url,
             headers={
@@ -57,35 +57,53 @@ class TwitchClient:
                 "code": code,
             },
         )
+        status_code = response.status_code
+        if status_code != 200:
+            raise BaseError("twitch get token")
         data = response.json()
         token = data["access_token"]
         refresh_token = data["refresh_token"]
-        # expires_in = data["expires_in"]
+        expires_in = data["expires_in"]
 
+        return token, refresh_token, expires_in
+
+    async def validate(self, token: str) -> str:
         response = await self.client.get(
             validate_url,
             headers={
                 "Authorization": f"Bearer {token}",
             },
         )
-        if response.status_code != 200:
-            raise BaseError("twitch callback")
-        else:
-            data = response.json()
-            user_id = data["user_id"]
+        status_code = response.status_code
+        if status_code == 401:
+            raise InvalidTokenError()
+        if status_code != 200:
+            raise BaseError("twitch validate")
+        data = response.json()
+        user_id = data["user_id"]
+        return user_id
 
-        return user_id, token, refresh_token
-
-    async def is_token_valid(self, token: str, user_id: str) -> bool:
-        response = await self.client.get(
-            get_users,
+    async def refresh(self, refresh_token: str) -> tuple[str, str]:
+        response = await self.client.post(
+            token_url,
             headers={
-                "Authorization": f"Bearer {token}",
-                "Client-Id": get_settings().twitch_id,
+                "Content-Type": "application/x-www-form-urlencoded",
             },
-            params={"id": user_id},
+            data={
+                "client_id": get_settings().twitch_id,
+                "client_secret": get_settings().twitch_secret,
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+            },
         )
-        return response.status_code == 200
+        status_code = response.status_code
+        if status_code != 200:
+            raise BaseError("twitch refresh")
+        data = response.json()
+        token = data["access_token"]
+        refresh_token = data["refresh_token"]
+
+        return token, refresh_token
 
     async def get_user(self, token: str, user_id: str) -> tuple[str, str]:
         response = await self.client.get(
@@ -96,13 +114,13 @@ class TwitchClient:
             },
             params={"id": user_id},
         )
-        if response.status_code != 200:
+        status_code = response.status_code
+        if status_code != 200:
             raise BaseError("twitch get error")
-        else:
-            data = response.json()["data"]
-            user = data[0]
-            username = user["display_name"]
-            email = user["email"]
+        data = response.json()["data"]
+        user = data[0]
+        username = user["display_name"]
+        email = user["email"]
         return username, email
 
     async def get_poll(self, token: str, user_id: str, poll_id: str) -> dict:
@@ -114,20 +132,20 @@ class TwitchClient:
             },
             params={"broadcaster_id": user_id, "id": poll_id},
         )
-        if response.status_code != 200:
+        status_code = response.status_code
+        if status_code != 200:
             raise BaseError("twitch get poll error")
-        else:
-            data = response.json()["data"]
-            poll = data[0]
-            output = {
-                "poll_id": poll["id"],
-                "title": poll["title"],
-                "choices": [
-                    {"title": choice["title"], "votes": choice["votes"]}
-                    for choice in poll["choices"]
-                ],
-                "status": poll["status"],
-            }
+        data = response.json()["data"]
+        poll = data[0]
+        output = {
+            "poll_id": poll["id"],
+            "title": poll["title"],
+            "choices": [
+                {"title": choice["title"], "votes": choice["votes"]}
+                for choice in poll["choices"]
+            ],
+            "status": poll["status"],
+        }
         return output
 
     # TODO custom duration
@@ -152,12 +170,12 @@ class TwitchClient:
                 "duration": duration,
             },
         )
-        if response.status_code != 200:
+        status_code = response.status_code
+        if status_code != 200:
             raise BaseError("twitch create poll error")
-        else:
-            data = response.json()["data"]
-            poll = data[0]
-            output = {"poll_id": poll["id"]}
+        data = response.json()["data"]
+        poll = data[0]
+        output = {"poll_id": poll["id"]}
         return output
 
     async def end_poll(self, token: str, user_id: str, poll_id: str) -> dict:
@@ -169,18 +187,18 @@ class TwitchClient:
             },
             data={"broadcaster_id": user_id, "id": poll_id, "status": "TERMINATED"},
         )
-        if response.status_code != 200:
+        status_code = response.status_code
+        if status_code != 200:
             raise BaseError("twitch end poll error")
-        else:
-            data = response.json()["data"]
-            poll = data[0]
-            output = {
-                "poll_id": poll["id"],
-                "title": poll["title"],
-                "choices": [
-                    {"title": choice["title"], "votes": choice["votes"]}
-                    for choice in poll["choices"]
-                ],
-                "status": poll["status"],
-            }
+        data = response.json()["data"]
+        poll = data[0]
+        output = {
+            "poll_id": poll["id"],
+            "title": poll["title"],
+            "choices": [
+                {"title": choice["title"], "votes": choice["votes"]}
+                for choice in poll["choices"]
+            ],
+            "status": poll["status"],
+        }
         return output

@@ -6,11 +6,17 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.crud.users import UsersCRUD
-from app.schemas.websocket import PollInputType, WebSocketInput, WebSocketInputType
+from app.schemas.websocket import (
+    PollInputType,
+    PollOutputType,
+    WebSocketInput,
+    WebSocketInputType,
+    WebSocketOutputType,
+)
 from app.utils.connection_manager import ConnectionManager
 from app.utils.dependencies import (
     get_connection_manager,
-    get_is_user_logged_in,
+    get_get_token,
     get_postgres_database,
     get_twitch_client,
 )
@@ -33,11 +39,11 @@ async def connect_websocket(
     websocket: WebSocket,
     twitch_client: TwitchClient = Depends(get_twitch_client),
     postgres_database: Session = Depends(get_postgres_database),
-    is_user_logged_in: Callable = Depends(get_is_user_logged_in),
+    get_token: Callable = Depends(get_get_token),
     connection_manager: ConnectionManager = Depends(get_connection_manager),
 ):
-    is_logged_in = await is_user_logged_in(websocket)
-    if not is_logged_in["is_logged_in"]:
+    token = await get_token(websocket)
+    if not token:
         raise NotLoggedInError()
 
     session_id = websocket.cookies.get("session_id")
@@ -45,99 +51,98 @@ async def connect_websocket(
 
     await connection_manager.connect(session_id, websocket)
 
-    alive = True
-    while alive:
-        data = await websocket.receive_json()
-        try:
-            data = WebSocketInput.model_validate(data)
-        except IncorrectWebsocketInputError:
-            payload = IncorrectWebsocketInputError().json()
-            await connection_manager.send_json(session_id, payload)
-        except MissingPayloadError:
-            payload = MissingPayloadError().json()
-            await connection_manager.send_json(session_id, payload)
-        except MissingTypeFieldError:
-            payload = MissingTypeFieldError().json()
-            await connection_manager.send_json(session_id, payload)
-        except UnknownTypeFieldError:
-            payload = UnknownTypeFieldError().json()
-            await connection_manager.send_json(session_id, payload)
-        except ValidationError:
-            payload = IncorrectPayloadError().json()
-            await connection_manager.send_json(session_id, payload)
-        else:
-            payload = data.payload
-            match payload.type:
-                case WebSocketInputType.DISCONNECT:
-                    alive = False
-                    await connection_manager.send_json(
-                        session_id,
-                        {
-                            "type": "connection_status",
-                            "status": "disconnected",
-                        },
-                    )
-                    await connection_manager.disconnect(session_id)
-                case WebSocketInputType.POLL:
-                    match payload.data.type:
-                        case PollInputType.START:
-                            poll = await twitch_client.create_poll(
-                                token=user.token,
-                                user_id=user.user_id,
-                                title=payload.data.data.title,
-                                choices=payload.data.data.choices,
-                            )
-                            await connection_manager.send_json(
-                                session_id,
-                                {
-                                    "type": "poll",
-                                    "data": {
-                                        "type": "start",
-                                        "data": poll,
-                                    },
-                                },
-                            )
-                        case PollInputType.GET:
-                            try:
-                                poll = await twitch_client.get_poll(
-                                    token=user.token,
+    try:
+        while True:
+            data = await websocket.receive_json()
+            try:
+                data = WebSocketInput.model_validate(data)
+            except IncorrectWebsocketInputError:
+                payload = IncorrectWebsocketInputError().json()
+                await connection_manager.send_json(session_id, payload)
+            except MissingPayloadError:
+                payload = MissingPayloadError().json()
+                await connection_manager.send_json(session_id, payload)
+            except MissingTypeFieldError:
+                payload = MissingTypeFieldError().json()
+                await connection_manager.send_json(session_id, payload)
+            except UnknownTypeFieldError:
+                payload = UnknownTypeFieldError().json()
+                await connection_manager.send_json(session_id, payload)
+            except ValidationError:
+                payload = IncorrectPayloadError().json()
+                await connection_manager.send_json(session_id, payload)
+            else:
+                payload = data.payload
+                match payload.type:
+                    case WebSocketInputType.POLL:
+                        match payload.data.type:
+                            case PollInputType.START:
+                                token = await get_token(websocket)
+                                poll = await twitch_client.create_poll(
+                                    token=token,
                                     user_id=user.user_id,
-                                    poll_id=payload.data.data.poll_id,
+                                    title=payload.data.data.title,
+                                    choices=payload.data.data.choices,
                                 )
-                            except PollNotFoundError:
-                                await connection_manager.send_json(
-                                    session_id, PollNotFoundError().json()
-                                )
-                            else:
                                 await connection_manager.send_json(
                                     session_id,
                                     {
-                                        "type": "poll",
+                                        "type": WebSocketOutputType.POLL,
                                         "data": {
-                                            "type": "get",
+                                            "type": PollOutputType.START,
                                             "data": poll,
                                         },
                                     },
                                 )
-                        case PollInputType.END:
-                            try:
-                                poll = await twitch_client.end_poll(
-                                    token=user.token,
-                                    user_id=user.user_id,
-                                    poll_id=payload.data.data.poll_id,
-                                )
-                            except PollNotFoundError:
-                                await connection_manager.send_json(
-                                    session_id, PollNotFoundError().json()
-                                )
-                            else:
-                                await connection_manager.send_json(
-                                    session_id,
-                                    {
-                                        "type": "poll",
-                                        "data": {
-                                            "type": "end",
-                                            "data": poll,
+                            case PollInputType.GET:
+                                token = await get_token(websocket)
+                                try:
+                                    poll = await twitch_client.get_poll(
+                                        token=token,
+                                        user_id=user.user_id,
+                                        poll_id=payload.data.data.poll_id,
+                                    )
+                                except PollNotFoundError:
+                                    await connection_manager.send_json(
+                                        session_id, PollNotFoundError().json()
+                                    )
+                                else:
+                                    await connection_manager.send_json(
+                                        session_id,
+                                        {
+                                            "type": WebSocketOutputType.POLL,
+                                            "data": {
+                                                "type": PollOutputType.GET,
+                                                "data": poll,
+                                            },
                                         },
-                                    },
-                                )
+                                    )
+                            case PollInputType.END:
+                                token = await get_token(websocket)
+                                try:
+                                    poll = await twitch_client.end_poll(
+                                        token=token,
+                                        user_id=user.user_id,
+                                        poll_id=payload.data.data.poll_id,
+                                    )
+                                except PollNotFoundError:
+                                    await connection_manager.send_json(
+                                        session_id, PollNotFoundError().json()
+                                    )
+                                else:
+                                    await connection_manager.send_json(
+                                        session_id,
+                                        {
+                                            "type": WebSocketOutputType.POLL,
+                                            "data": {
+                                                "type": PollOutputType.END,
+                                                "data": poll,
+                                            },
+                                        },
+                                    )
+                    case WebSocketInputType.PING:
+                        await connection_manager.send_json(
+                            session_id, {"type": WebSocketOutputType.PING}
+                        )
+    except WebSocketDisconnect:
+        await connection_manager.disconnect(session_id)

@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict
 
 
@@ -10,7 +8,6 @@ class User(BaseModel):
     token: str
     refresh_token: str
     session_id: str
-    # expires_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
 

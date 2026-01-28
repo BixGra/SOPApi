@@ -76,12 +76,12 @@ class PollEndInput(BaseModel):
 
 
 class WebSocketInputType(str, Enum):
-    DISCONNECT = "disconnect"
     POLL = "poll"
+    PING = "ping"
 
 
-class DisconnectInput(BaseModel):
-    type: Literal[WebSocketInputType.DISCONNECT]
+class PingInput(BaseModel):
+    type: Literal[WebSocketInputType.PING]
 
 
 class PollInput(BaseModel):
@@ -90,7 +90,7 @@ class PollInput(BaseModel):
 
 
 class WebSocketInput(BaseModel):
-    payload: DisconnectInput | PollInput
+    payload: PollInput | PingInput
 
     @model_validator(mode="before")
     @classmethod
@@ -178,16 +178,20 @@ class WebSocketOutputType(str, Enum):
     CONNECTION_STATUS = "connection_status"
     POLL = "poll"
     ERROR = "error"
+    PING = "pong"
 
 
 class ConnectionStatus(str, Enum):
     CONNECTED = "connected"
-    DISCONNECTED = "disconnected"
 
 
 class ConnectionStatusOutput(BaseModel):
     type: Literal[WebSocketOutputType.CONNECTION_STATUS]
     status: ConnectionStatus
+
+
+class PingOutput(BaseModel):
+    type: Literal[WebSocketOutputType.PING]
 
 
 class ErrorOutput(BaseModel):
@@ -203,7 +207,7 @@ class PollOutput(BaseModel):
 
 
 class WebSocketOutput(BaseModel):
-    payload: ConnectionStatusOutput | ErrorOutput | PollOutput
+    payload: ConnectionStatusOutput | ErrorOutput | PollOutput | PingOutput
 
     @model_validator(mode="before")
     @classmethod
