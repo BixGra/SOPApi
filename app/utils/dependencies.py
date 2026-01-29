@@ -51,11 +51,13 @@ def get_get_token(
         user = users[0]
         user_id = user.user_id
         token = user.token
+        refresh_token = user.refresh_token
         try:
             await twitch_client.validate(token)
         except InvalidTokenError:
-            token, refresh_token = await twitch_client.refresh()
+            token, refresh_token = await twitch_client.refresh(refresh_token)
             UsersCRUD(postgres_database).update_user(
+                session_id=session_id,
                 user_id=user_id,
                 token=token,
                 refresh_token=refresh_token,

@@ -21,8 +21,6 @@ class ConnectionManager:
         )
 
     async def disconnect(self, session_id: str):
-        websocket = self.active_connections[session_id].websocket
-        await websocket.close()
         del self.active_connections[session_id]
 
     async def send_json(self, session_id: str, payload: dict):
@@ -42,7 +40,7 @@ class ConnectionManager:
                 to_close.append(session_id)
 
         for session_id in to_close:
-            await self.disconnect(session_id)
+            await self.active_connections[session_id].websocket.close()
 
 
 connection_manager = ConnectionManager()

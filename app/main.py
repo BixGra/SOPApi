@@ -14,7 +14,7 @@ from app.utils.errors import SOPApiError
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     scheduler = AsyncIOScheduler()
-    delay = 120
+    delay = 600
     scheduler.add_job(
         connection_manager.check_stale, "interval", seconds=delay, args=[delay]
     )
